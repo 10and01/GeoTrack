@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-
-from .models import Hotspot, Pattern, Trajectory
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,21 +79,71 @@ class GeoTrackStore:
             "trajectory_count": self.summary.get("trajectory_count", 0),
         }
 
-    def create_job(self, job_type: str) -> dict[str, Any]:
+    def _update_job(self, job_id: str, **fields: Any) -> None:
+        with self._lock:
+            if job_id in self._jobs:
+                self._jobs[job_id].update(fields)
+
+    def _run_job(self, job_id: str, job_type: str, max_trajectories: int | None, max_points: int | None) -> None:
+        try:
+            self._update_job(
+                job_id,
+                status="running",
+                started_at=datetime.now(timezone.utc).isoformat(),
+                message="正在执行本地批处理：解析、清洗、停留点和热点挖掘。",
+            )
+            from jobs.geotrack_core import build_dataset, write_dataset
+
+            data_root = Path(os.getenv("GEOTRACK_DATA_ROOT", str(ROOT / "Geolife Trajectories 1.3" / "Data")))
+            if not data_root.exists():
+                raise FileNotFoundError(f"数据目录不存在: {data_root}")
+            dataset = build_dataset(
+                data_root,
+                max_trajectories if max_trajectories is not None else int(os.getenv("GEOTRACK_DEMO_MAX_TRAJECTORIES", "120")),
+                max_points if max_points is not None else int(os.getenv("GEOTRACK_DEMO_MAX_POINTS", "60000")),
+            )
+            write_dataset(dataset, DATA_FILE)
+            self.reload()
+            self._update_job(
+                job_id,
+                status="completed",
+                finished_at=datetime.now(timezone.utc).isoformat(),
+                message="批处理完成，服务表已刷新。",
+                summary=dataset.get("summary", {}),
+            )
+        except Exception as error:
+            self._update_job(
+                job_id,
+                status="failed",
+                finished_at=datetime.now(timezone.utc).isoformat(),
+                message="批处理失败。",
+                error=str(error),
+            )
+
+    def create_job(self, job_type: str, max_trajectories: int | None = None, max_points: int | None = None) -> dict[str, Any]:
         job_id = uuid.uuid4().hex[:12]
         job = {
             "job_id": job_id,
             "job_type": job_type,
             "status": "queued",
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "message": "任务已加入本地演示队列。完整环境中由 Spark submit 执行。",
+            "message": "任务已加入队列。",
         }
         with self._lock:
             self._jobs[job_id] = job
-        return job
+        worker = threading.Thread(
+            target=self._run_job,
+            args=(job_id, job_type, max_trajectories, max_points),
+            daemon=True,
+            name=f"geotrack-job-{job_id}",
+        )
+        worker.start()
+        return dict(job)
 
     def job(self, job_id: str) -> dict[str, Any] | None:
-        return self._jobs.get(job_id)
+        with self._lock:
+            job = self._jobs.get(job_id)
+            return dict(job) if job else None
 
 
 store = GeoTrackStore()

@@ -94,7 +94,7 @@ def data_quality() -> dict[str, Any]:
 
 @app.post("/api/jobs/run")
 def run_job(request: JobRequest) -> dict[str, Any]:
-    return store.create_job(request.job_type)
+    return store.create_job(request.job_type, request.max_trajectories, request.max_points)
 
 
 @app.get("/api/jobs/{job_id}")

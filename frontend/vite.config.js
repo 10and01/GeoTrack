@@ -9,5 +9,15 @@ export default defineConfig({
       '/api': 'http://localhost:8000',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          charts: ['echarts', 'echarts-for-react'],
+          map: ['leaflet', 'react-leaflet'],
+        },
+      },
+    },
+  },
 })
 
