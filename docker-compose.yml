@@ -1,0 +1,95 @@
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    environment:
+      - CLUSTER_NAME=geotrack
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    volumes:
+      - hdfs_namenode:/hadoop/dfs/name
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    environment:
+      - SERVICE_DEPENDENCIES=namenode:9870
+    depends_on:
+      - namenode
+    volumes:
+      - hdfs_datanode:/hadoop/dfs/data
+
+  spark-master:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+    depends_on:
+      - spark-master
+
+  postgres:
+    image: ${POSTGRES_IMAGE:-mobilitydb/mobilitydb:latest}
+    environment:
+      POSTGRES_DB: geotrack
+      POSTGRES_USER: geotrack
+      POSTGRES_PASSWORD: geotrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    environment:
+      GEOTRACK_DATA_ROOT: /dataset
+    volumes:
+      - ./data:/app/data
+      - ./backend:/app/backend
+      - ./jobs:/app/jobs
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+  spark-submit:
+    image: bitnami/spark:3.5
+    profiles: ["batch"]
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+      - "./Geolife Trajectories 1.3:/dataset:ro"
+    entrypoint: ["/bin/bash", "-lc"]
+    command: ["spark-submit jobs/spark_pipeline.py --data-root '/dataset/Data' --output data/processed/demo.json"]
+    depends_on:
+      - spark-master
+
+volumes:
+  hdfs_namenode:
+  hdfs_datanode:
+  postgres_data:
+
