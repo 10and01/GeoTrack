@@ -33,7 +33,7 @@ def filtered_trajectories(
     east: float | None = Query(None, ge=-180, le=180),
     north: float | None = Query(None, ge=-90, le=90),
 ) -> list[dict[str, Any]]:
-    return filter_trajectories(store.data, user_id, start, end, limit, offset, _bbox(west, south, east, north))
+    return filter_trajectories(store.data, user_id, start, end, limit, offset, _bbox(west, south, east, north), include_points=False)
 
 
 @router.get("/hotspots")

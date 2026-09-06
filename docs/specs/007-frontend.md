@@ -70,6 +70,7 @@
 
 - [x] `npm run build` 成功。
 - [x] 已验证桌面端、390×844 窄屏、热点筛选、图表和任务提交。`/api/query/trajectories` 与 `/api/query/hotspots` 已接入轨迹/热点页面。
+- [x] 轨迹选中后加载详情点集；任务页轮询 queued/running/completed/failed 状态。
 - [ ] 课程现场网络断开时使用备份视频完成演示。
 
 ## Risks and traceability

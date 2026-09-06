@@ -26,6 +26,7 @@ def filter_trajectories(
     limit: int = 20,
     offset: int = 0,
     bbox: BBox | None = None,
+    include_points: bool = False,
 ) -> list[dict[str, Any]]:
     rows = list(data.get("trajectories", []))
     if user_id:
@@ -37,8 +38,10 @@ def filter_trajectories(
     rows = [row for row in rows if _trajectory_in_bbox(row, bbox)]
     safe_limit = max(1, min(limit, 200))
     safe_offset = max(0, offset)
-    return rows[safe_offset : safe_offset + safe_limit]
-
+    page = rows[safe_offset : safe_offset + safe_limit]
+    if include_points:
+        return page
+    return [{key: value for key, value in row.items() if key != "points"} for row in page]
 
 def _hotspot_center(row: dict[str, Any]) -> tuple[float, float]:
     center = row.get("center")
@@ -68,7 +71,7 @@ def filter_hotspots(
         from jobs.geotrack_core import build_hotspots, extract_stay_points
 
         stays: list[dict[str, Any]] = []
-        for trajectory in filter_trajectories(data, user_id=user_id, start=start, end=end, limit=200):
+        for trajectory in filter_trajectories(data, user_id=user_id, start=start, end=end, limit=200, include_points=True):
             from datetime import datetime
 
             points = []

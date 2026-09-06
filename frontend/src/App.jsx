@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import {
   Activity,
@@ -18,7 +18,7 @@ import {
   Target,
   X,
 } from 'lucide-react'
-import { loadDashboardData, queryHotspots, queryTrajectories, runJob } from './lib/api.js'
+import { getJob, getTrajectory, loadDashboardData, queryHotspots, queryTrajectories, runJob } from './lib/api.js'
 import MapPanel from './components/MapPanel.jsx'
 import SectionHeading from './components/SectionHeading.jsx'
 import StatCard from './components/StatCard.jsx'
@@ -36,16 +36,15 @@ const km = (value) => `${new Intl.NumberFormat('zh-CN', { maximumFractionDigits:
 
 function useDashboardData() {
   const [state, setState] = useState({ loading: true, data: null, error: null })
-  const refresh = () => {
+  const refresh = useCallback(() => {
     setState((current) => ({ ...current, loading: true, error: null }))
     loadDashboardData()
       .then((data) => setState({ loading: false, data, error: null }))
       .catch((error) => setState({ loading: false, data: null, error: error.message }))
-  }
-  useEffect(refresh, [])
+  }, [])
+  useEffect(refresh, [refresh])
   return { ...state, refresh }
 }
-
 function AppShell({ activeView, setActiveView, children, dataMode, onRefresh, mobileNav, setMobileNav }) {
   return (
     <div className="app-shell">
@@ -131,6 +130,8 @@ function TrajectoryView({ data }) {
   const [page, setPage] = useState(0)
   const [rows, setRows] = useState(data.trajectories ?? [])
   const [selected, setSelected] = useState(data.trajectories?.[0])
+  const [detail, setDetail] = useState(null)
+  const [detailState, setDetailState] = useState({ loading: false, error: '' })
   const [queryState, setQueryState] = useState({ loading: false, error: '' })
 
   useEffect(() => {
@@ -174,6 +175,32 @@ function TrajectoryView({ data }) {
     setSelected((current) => rows.find((row) => row.trajectory_id === current?.trajectory_id) ?? rows[0])
   }, [rows])
 
+  useEffect(() => {
+    if (!selected?.trajectory_id) {
+      setDetail(null)
+      return undefined
+    }
+    if (data.mode !== 'api') {
+      setDetail(selected)
+      setDetailState({ loading: false, error: '' })
+      return undefined
+    }
+    let cancelled = false
+    setDetailState({ loading: true, error: '' })
+    getTrajectory(selected.trajectory_id).then((result) => {
+      if (!cancelled) {
+        setDetail(result)
+        setDetailState({ loading: false, error: '' })
+      }
+    }).catch((error) => {
+      if (!cancelled) {
+        setDetail(selected)
+        setDetailState({ loading: false, error: `详情加载失败：${error.message}` })
+      }
+    })
+    return () => { cancelled = true }
+  }, [data.mode, selected])
+
   const resetPage = (setter) => (event) => {
     setter(event.target.value)
     setPage(0)
@@ -182,7 +209,7 @@ function TrajectoryView({ data }) {
   return <div className="page-content">
     <PageHeader kicker="TRAJECTORY EXPLORER / 02" title="沿着用户轨迹走一遍" description="选择用户与日期范围，后端按页返回轨迹摘要，避免浏览器一次加载全量轨迹点。" action={<div className="filter-stack"><div className="select-wrap"><ListFilter size={15} /><select value={user} onChange={resetPage(setUser)}><option value="all">全部用户</option>{data.users?.map((item) => <option key={item.user_id} value={item.user_id}>{item.user_id} · {item.trajectory_count} 条</option>)}</select></div><label className="date-filter"><span>开始</span><input type="date" value={startDate} max={endDate || undefined} onChange={resetPage(setStartDate)} /></label><label className="date-filter"><span>结束</span><input type="date" value={endDate} min={startDate || undefined} onChange={resetPage(setEndDate)} /></label></div>} />
     <div className="dashboard-grid explorer-grid">
-      <section className="panel map-panel"><SectionHeading eyebrow="TRACE PREVIEW" title={selected?.trajectory_id ?? '选择一条轨迹'} meta={selected ? `${selected.point_count} points` : '等待选择'} /><MapPanel trajectories={selected ? [selected] : []} hotspots={data.hotspots} /><div className="trajectory-summary"><div><span>开始时间</span><strong>{selected?.start_ts?.slice(0, 16).replace('T', ' ') ?? '—'}</strong></div><div><span>距离</span><strong>{selected ? km(selected.distance_m) : '—'}</strong></div><div><span>持续时间</span><strong>{selected ? `${Math.round((selected.duration_s ?? 0) / 60)} min` : '—'}</strong></div></div></section>
+      <section className="panel map-panel"><SectionHeading eyebrow="TRACE PREVIEW" title={selected?.trajectory_id ?? '选择一条轨迹'} meta={detailState.loading ? '详情查询中…' : detail ? `${detail.point_count} points` : '等待选择'} />{detailState.error ? <div className="inline-state error detail-error">{detailState.error}</div> : null}<MapPanel trajectories={detail ? [detail] : selected ? [selected] : []} hotspots={data.hotspots} /><div className="trajectory-summary"><div><span>开始时间</span><strong>{detail?.start_ts?.slice(0, 16).replace('T', ' ') ?? '—'}</strong></div><div><span>距离</span><strong>{detail ? km(detail.distance_m) : '—'}</strong></div><div><span>持续时间</span><strong>{detail ? `${Math.round((detail.duration_s ?? 0) / 60)} min` : '—'}</strong></div></div></section>
       <section className="panel table-panel"><SectionHeading eyebrow="TRAJECTORIES" title="轨迹记录" meta={queryState.loading ? '查询中…' : `${rows.length} records`} />{queryState.error ? <div className="inline-state error">{queryState.error}</div> : queryState.loading ? <div className="inline-state">正在按筛选条件查询轨迹…</div> : rows.length === 0 ? <div className="inline-state">当前筛选条件下没有轨迹</div> : <div className="data-table"><div className="table-head"><span>ID</span><span>用户</span><span>距离</span><span>时间</span></div>{rows.map((row) => <button key={row.trajectory_id} className={`table-row ${selected?.trajectory_id === row.trajectory_id ? 'selected' : ''}`} onClick={() => setSelected(row)}><span>{row.trajectory_id.split('_')[1] ?? row.trajectory_id}</span><span className="user-chip">{row.user_id}</span><span>{km(row.distance_m)}</span><span>{row.start_ts.slice(0, 10)}</span></button>)}</div>}<div className="pagination"><button disabled={page === 0 || queryState.loading} onClick={() => setPage((current) => Math.max(0, current - 1))}>上一页</button><span>第 {page + 1} 页</span><button disabled={rows.length < pageSize || queryState.loading} onClick={() => setPage((current) => current + 1)}>下一页</button></div></section>
     </div>
   </div>
@@ -252,13 +279,44 @@ function PatternView({ data }) {
 
 function QualityView({ data, onRefresh }) {
   const [running, setRunning] = useState(false)
+  const [job, setJob] = useState(null)
   const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (!job?.job_id || ['completed', 'failed'].includes(job.status)) return undefined
+    let cancelled = false
+    const poll = window.setInterval(() => {
+      getJob(job.job_id).then((next) => {
+        if (!cancelled) setJob(next)
+      }).catch((error) => {
+        if (!cancelled) setMessage(`任务状态查询失败：${error.message}`)
+      })
+    }, 1200)
+    return () => {
+      cancelled = true
+      window.clearInterval(poll)
+    }
+  }, [job])
+
+  useEffect(() => {
+    if (!job) return
+    if (job.status === 'completed') {
+      setMessage(`任务 ${job.job_id} 已完成，服务数据已刷新。`)
+      onRefresh()
+    } else if (job.status === 'failed') {
+      setMessage(`任务 ${job.job_id} 失败：${job.error || job.message || '未知错误'}`)
+    } else {
+      setMessage(`任务 ${job.job_id}：${job.message || job.status}`)
+    }
+  }, [job, onRefresh])
+
   async function handleRun() {
     setRunning(true)
     setMessage('正在提交 Spark 任务…')
     try {
-      const job = await runJob('mine')
-      setMessage(`任务 ${job.job_id} 已进入队列`)
+      const next = await runJob('mine')
+      setJob(next)
+      setMessage(`任务 ${next.job_id} 已进入队列`)
     } catch (error) {
       setMessage('API 未连接：当前处于本地演示模式')
     } finally {
@@ -266,9 +324,9 @@ function QualityView({ data, onRefresh }) {
     }
   }
   const quality = data.quality ?? {}
-  return <div className="page-content"><PageHeader kicker="PIPELINE OPS / 05" title="让每一批数据都有迹可循" description="查看数据质量、处理批次与 Spark 任务入口，保证结果可复现、可答辩。" action={<button className="primary-button" onClick={handleRun} disabled={running}>{running ? <RefreshCw className="spin" size={16} /> : <Play size={16} />}{running ? '提交中' : '运行挖掘任务'}</button>} /><div className="dashboard-grid quality-grid"><section className="panel"><SectionHeading eyebrow="QUALITY REPORT" title="清洗摘要" meta="当前数据集" /><div className="quality-metrics"><div><span>有效点</span><strong>{fmt(quality.valid_points)}</strong><small>保留进入特征工程</small></div><div><span>重复点</span><strong>{fmt(quality.duplicate_points)}</strong><small>连续重复坐标时间点</small></div><div><span>时间断点</span><strong>{fmt(quality.time_gap_segments)}</strong><small>超过 30 分钟</small></div><div><span>停留点</span><strong>{fmt(quality.stay_point_count)}</strong><small>200m / 20min 规则</small></div></div><div className="quality-progress"><div><span>点级有效率</span><strong>99.3%</strong></div><div className="progress-track"><i style={{ width: '99.3%' }} /></div></div></section><section className="panel"><SectionHeading eyebrow="RUNBOOK" title="处理链路" meta="四层架构" /><div className="pipeline-list"><div className="pipeline-item done"><span>01</span><div><strong>PLT / HDFS raw</strong><small>原始轨迹文件落盘</small></div><i>✓</i></div><div className="pipeline-item done"><span>02</span><div><strong>Spark clean</strong><small>清洗、距离、质量报告</small></div><i>✓</i></div><div className="pipeline-item active"><span>03</span><div><strong>MobilityDB serving</strong><small>空间索引与时态轨迹</small></div><i>●</i></div><div className="pipeline-item"><span>04</span><div><strong>REST / React</strong><small>查询、地图和图表展示</small></div><i>○</i></div></div><div className="job-message">{message || '批处理任务可以在 Docker/Spark 环境中替换为真实 spark-submit。'} </div></section></div><section className="panel implementation-note"><Server size={20} /><div><strong>课程答辩提示</strong><p>演示时说明：HDFS 保存 raw/curated Parquet，Spark 生成停留点和聚类结果，MobilityDB 负责空间检索，FastAPI 只查询预计算服务表，避免网页请求阻塞批处理。</p></div><button className="ghost-button" onClick={onRefresh}>刷新数据</button></section></div>
+  const statusLabel = { queued: '排队中', running: '运行中', completed: '已完成', failed: '失败' }
+  return <div className="page-content"><PageHeader kicker="PIPELINE OPS / 05" title="让每一批数据都有迹可循" description="查看数据质量、处理批次与 Spark 任务入口，保证结果可复现、可答辩。" action={<button className="primary-button" onClick={handleRun} disabled={running || ['queued', 'running'].includes(job?.status)}>{running ? <RefreshCw className="spin" size={16} /> : <Play size={16} />}{running ? '提交中' : job?.status === 'running' ? '运行中' : '运行挖掘任务'}</button>} /><div className="dashboard-grid quality-grid"><section className="panel"><SectionHeading eyebrow="QUALITY REPORT" title="清洗摘要" meta="当前数据集" /><div className="quality-metrics"><div><span>有效点</span><strong>{fmt(quality.valid_points)}</strong><small>保留进入特征工程</small></div><div><span>重复点</span><strong>{fmt(quality.duplicate_points)}</strong><small>连续重复坐标时间点</small></div><div><span>时间断点</span><strong>{fmt(quality.time_gap_segments)}</strong><small>超过 30 分钟</small></div><div><span>停留点</span><strong>{fmt(quality.stay_point_count)}</strong><small>200m / 20min 规则</small></div></div><div className="quality-progress"><div><span>点级有效率</span><strong>99.3%</strong></div><div className="progress-track"><i style={{ width: '99.3%' }} /></div></div></section><section className="panel"><SectionHeading eyebrow="RUNBOOK" title="处理链路" meta="四层架构" /><div className="pipeline-list"><div className="pipeline-item done"><span>01</span><div><strong>PLT / HDFS raw</strong><small>原始轨迹文件落盘</small></div><i>✓</i></div><div className="pipeline-item done"><span>02</span><div><strong>Spark clean</strong><small>清洗、距离、质量报告</small></div><i>✓</i></div><div className="pipeline-item active"><span>03</span><div><strong>MobilityDB serving</strong><small>空间索引与时态轨迹</small></div><i>●</i></div><div className="pipeline-item"><span>04</span><div><strong>REST / React</strong><small>查询、地图和图表展示</small></div><i>○</i></div></div><div className={`job-message ${job?.status === 'failed' ? 'job-failed' : ''}`}>{job ? <><strong>{statusLabel[job.status] || job.status}</strong> · {message}{job.started_at ? <small>开始 {job.started_at.slice(11, 19)} UTC</small> : null}</> : message || '批处理任务可以在 Docker/Spark 环境中替换为真实 spark-submit。'}</div></section></div><section className="panel implementation-note"><Server size={20} /><div><strong>课程答辩提示</strong><p>演示时说明：HDFS 保存 raw/curated Parquet，Spark 生成停留点和聚类结果，MobilityDB 负责空间检索，FastAPI 只查询预计算服务表，避免网页请求阻塞批处理。</p></div><button className="ghost-button" onClick={onRefresh}>刷新数据</button></section></div>
 }
-
 export default function App() {
   const { loading, data, error, refresh } = useDashboardData()
   const [activeView, setActiveView] = useState('overview')

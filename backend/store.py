@@ -56,7 +56,8 @@ class GeoTrackStore:
             rows = [row for row in rows if row.get("end_ts", "") >= start]
         if end:
             rows = [row for row in rows if row.get("start_ts", "") <= end]
-        return rows[: max(1, min(limit, 200))]
+        page = rows[: max(1, min(limit, 200))]
+        return [{key: value for key, value in row.items() if key != "points"} for row in page]
 
     def trajectory(self, trajectory_id: str) -> dict[str, Any] | None:
         return next((row for row in self.data.get("trajectories", []) if row.get("trajectory_id") == trajectory_id), None)
@@ -147,4 +148,3 @@ class GeoTrackStore:
 
 
 store = GeoTrackStore()
-

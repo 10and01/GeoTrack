@@ -13,3 +13,8 @@
 ## 验收
 
 运行 `npm run build`，检查桌面和约 390×844 窄屏；记录控制台错误、地图点击、筛选、图表和任务提交结果；提交信息使用 `feat: connect frontend filters to query APIs`，并在 Spec 006/007 记录真实提交号。
+
+
+## Follow-up: detail and job polling
+
+Load /api/trajectories/{trajectory_id} only after selecting a row; keep list payload summary-only. After POST /api/jobs/run, poll /api/jobs/{job_id} until completed or failed, show status and error details, and refresh dashboard data on completion.

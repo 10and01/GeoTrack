@@ -67,6 +67,7 @@ API SHALL 提供 `/api/health`、`/api/summary`、`/api/users`、`/api/trajector
 - [x] 健康、总览、热点、模式、质量和任务结构测试通过。
 - [x] 过滤路由挂载后补充边界框、分页和自定义 DBSCAN API 测试。
 - [ ] 数据库模式下补充 SQL 查询性能记录。
+- [x] 轨迹列表仅返回摘要，详情接口返回点级数据；前端任务页轮询 job_id 状态。
 
 ## Risks and traceability
 

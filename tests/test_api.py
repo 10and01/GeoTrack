@@ -17,6 +17,14 @@ class ApiSmokeTests(unittest.TestCase):
             self.assertIn("hourly_profile", patterns[0])
         self.assertIn("valid_points", data_quality())
 
+    def test_trajectory_list_is_summary_only_and_detail_has_points(self):
+        rows = __import__("backend.app", fromlist=["trajectories"]).trajectories(limit=1)
+        self.assertLessEqual(len(rows), 1)
+        if rows:
+            self.assertNotIn("points", rows[0])
+            detail = __import__("backend.app", fromlist=["trajectory"]).trajectory(rows[0]["trajectory_id"])
+            self.assertIsNotNone(detail)
+            self.assertIn("points", detail)
     def test_job_has_status(self):
         response = run_job(JobRequest(job_type="mine", max_trajectories=1, max_points=100))
         self.assertIn(response["status"], {"queued", "running", "completed"})

@@ -25,6 +25,13 @@ export function queryHotspots(params = {}) {
   return getJson(withQuery('/api/query/hotspots', params))
 }
 
+export function getTrajectory(trajectoryId) {
+  return getJson(`/api/trajectories/${encodeURIComponent(trajectoryId)}`)
+}
+
+export function getJob(jobId) {
+  return getJson(`/api/jobs/${encodeURIComponent(jobId)}`)
+}
 export async function loadDashboardData() {
   try {
     const [summary, users, trajectories, hotspots, patterns, quality] = await Promise.all([
