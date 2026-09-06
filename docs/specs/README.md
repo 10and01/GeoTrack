@@ -1,4 +1,4 @@
-# GeoTrack 分阶段 Spec
+﻿# GeoTrack 分阶段 Spec
 
 本目录采用 OpenSpec / GitHub Spec Kit 风格记录每个里程碑的可审查规格。Spec 是实现前的行为契约，需求规约回答“系统要解决什么问题”，设计规约回答“系统如何组织”，Spec 则把一个阶段拆成可执行、可验证、可追踪的变更。
 
@@ -34,3 +34,5 @@
 2. 实现、测试和人工演示完成后，将状态改为 `Implemented`，填写实际提交号。
 3. 若需求改变，保留旧 Spec，新增修订 Spec 或在变更记录中说明原因，避免重写历史。
 4. 每个阶段至少产生一个语义化 Git 提交，并在 Prompt 文件中记录实际使用的提示词。
+| [009-full-data](009-full-data.md) | 全量数据可复现处理路径 | 有界内存 manifest、Spark Parquet ingest、全量/演示隔离 |
+
