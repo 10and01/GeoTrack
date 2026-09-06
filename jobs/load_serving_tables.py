@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import psycopg
 
 
 def _wkt_line(coordinates: list[list[float]]) -> str:
@@ -25,17 +24,24 @@ def load(input_path: Path, dsn: str, run_id: str | None = None, dry_run: bool = 
     data = json.loads(input_path.read_text(encoding="utf-8"))
     trajectories = data.get("trajectories", [])
     point_rows = list(_point_rows(data))
+    stay_points = data.get("stay_points", [])
     hotspots = data.get("hotspots", [])
     patterns = data.get("patterns", [])
     counts = {
         "trajectory_points": len(point_rows),
         "trajectories": len(trajectories),
+        "stay_points": len(stay_points),
         "hotspots": len(hotspots),
         "temporal_patterns": len(patterns),
     }
     if dry_run:
         return counts
 
+    if not dry_run:
+        try:
+            import psycopg
+        except ImportError as error:
+            raise RuntimeError("写入数据库需要 psycopg；仅检查载荷时请使用 --dry-run") from error
     batch_id = run_id or data.get("summary", {}).get("generated_at", datetime.utcnow().isoformat())
     with psycopg.connect(dsn) as connection, connection.cursor() as cursor:
         for trajectory in trajectories:
@@ -65,6 +71,21 @@ def load(input_path: Path, dsn: str, run_id: str | None = None, dry_run: bool = 
                   ts=EXCLUDED.ts,latitude=EXCLUDED.latitude,longitude=EXCLUDED.longitude,altitude_m=EXCLUDED.altitude_m
                 """,
                 (trajectory["user_id"], trajectory["trajectory_id"], seq, point["timestamp"], point["latitude"], point["longitude"], point.get("altitude_m")),
+            )
+        for stay in stay_points:
+            cursor.execute(
+                """
+                INSERT INTO stay_points
+                  (user_id, trajectory_id, start_ts, end_ts, duration_s, center_geom, radius_m)
+                SELECT %s, %s, %s, %s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s
+                WHERE NOT EXISTS (
+                  SELECT 1 FROM stay_points
+                  WHERE trajectory_id = %s AND start_ts = %s AND end_ts = %s
+                )
+                """,
+                (stay["user_id"], stay["trajectory_id"], stay["start_ts"], stay["end_ts"],
+                 stay["duration_s"], stay["longitude"], stay["latitude"], stay["radius_m"],
+                 stay["trajectory_id"], stay["start_ts"], stay["end_ts"]),
             )
         for hotspot in hotspots:
             lon, lat = hotspot["geometry"]["coordinates"]

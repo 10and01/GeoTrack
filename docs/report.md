@@ -30,3 +30,14 @@ PLT 文件跳过前 6 行，统一解析为 UTC 时间、经纬度、米制海�
 
 GeoLife 原始数据只在本地使用，不提交 GitHub。当前标签仅覆盖部分用户，因此交通方式分类不作为第一版验收功能。单人项目是否符合课程 2–4 人分组要求，需以教师书面确认结果为准。
 
+
+
+## 7. 验收记录（2026-09-06）
+
+- Python 单元/API/服务载荷测试：12 项通过。
+- check_serving_payload.py 与 load_serving_tables.py --dry-run：通过，输出 60,000 点、72 条轨迹、46 个停留点、3 个热点、1 个模式。
+-
+pm run build：通过；Vite 仍提示 ECharts 分包超过 500 kB，仅为优化建议。
+- docker compose config：通过。
+- Docker Desktop Linux daemon：本次 Windows 会话未运行（npipe 不存在），因此 HDFS、Spark、PostGIS/MobilityDB 容器的真实启动与 SQL 写入仍标记为待目标机验证。
+- 一键入口：scripts/acceptance.ps1 与 make acceptance。

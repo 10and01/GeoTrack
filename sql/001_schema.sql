@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS stay_points (
 
 CREATE INDEX IF NOT EXISTS idx_stays_geom ON stay_points USING GIST (center_geom);
 CREATE INDEX IF NOT EXISTS idx_stays_time ON stay_points (start_ts, end_ts);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_stays_trajectory_window ON stay_points (trajectory_id, start_ts, end_ts);
 
 CREATE TABLE IF NOT EXISTS hotspots (
   hotspot_id TEXT PRIMARY KEY,
@@ -88,4 +89,3 @@ CREATE TABLE IF NOT EXISTS pipeline_jobs (
   finished_at TIMESTAMPTZ,
   error_message TEXT
 );
-

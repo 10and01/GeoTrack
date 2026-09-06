@@ -325,6 +325,7 @@ def build_dataset(data_root: Path, max_trajectories: int | None = 120, max_point
         "summary": summary,
         "users": sorted(users_seen.values(), key=lambda row: row["distance_m"], reverse=True),
         "trajectories": trajectories,
+        "stay_points": stays,
         "hotspots": hotspots,
         "patterns": patterns,
         "quality": {
@@ -341,4 +342,3 @@ def build_dataset(data_root: Path, max_trajectories: int | None = 120, max_point
 def write_dataset(dataset: dict[str, Any], output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(dataset, ensure_ascii=False, indent=2), encoding="utf-8")
-

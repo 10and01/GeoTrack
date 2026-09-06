@@ -1,9 +1,9 @@
 # Spec 005 · PostGIS / MobilityDB 服务层
 
-**Status**: Implemented  
-**Owner**: GeoTrack 小组  
-**Dependencies**: Spec 002、Spec 004  
-**Target commit**: `a667b94`
+**Status**: Implemented
+**Owner**: GeoTrack 小组
+**Dependencies**: Spec 002、Spec 004
+**Target commit**: `本阶段提交待写入`
 
 ## Context
 
@@ -59,8 +59,9 @@ Schema 位于 `sql/001_schema.sql`；加载器为 `jobs/load_serving_tables.py`�
 ## Acceptance
 
 - [x] Schema 包含课程要求的核心表和索引。
-- [x] 载荷检查输出 `60000` 点、`72` 条演示轨迹、热点和模式数量。
+- [x] 载荷检查输出 `60000` 点、`72` 条演示轨迹、`46` 个停留点、3 个热点和 1 个模式。
 - [ ] MobilityDB 容器实际初始化与 `tgeompoint` 写入记录待在目标机器补充。
+- [x] 处理产物持久化 `stay_points`；加载器 dry-run 不依赖 psycopg，并通过轨迹/时间窗口避免停留点重复。
 
 ## Risks and traceability
 

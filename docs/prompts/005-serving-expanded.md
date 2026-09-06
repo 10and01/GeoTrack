@@ -13,3 +13,8 @@
 ## 验收
 
 Schema 可重复初始化；dry-run 在无数据库环境输出点/轨迹/热点/模式计数；同一输入二次载入不增加重复记录；提交信息使用 `feat: add serving table loader`。
+
+
+## Follow-up: stay-point serving and acceptance
+
+Persist stay_points in the processed JSON, load them idempotently into PostGIS, delay-import psycopg so --dry-run works without database dependencies, add a unique trajectory/time-window safeguard, and expose one make acceptance command for reproducible checks.

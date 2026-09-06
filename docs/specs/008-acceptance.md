@@ -1,9 +1,9 @@
 # Spec 008 · 课程验收与最终交付
 
-**Status**: Accepted  
-**Owner**: GeoTrack 小组  
-**Dependencies**: Spec 001–007  
-**Target commit**: `待最终发布`
+**Status**: Accepted
+**Owner**: GeoTrack 小组
+**Dependencies**: Spec 001–007
+**Target commit**: `待最终发布`（本阶段 acceptance runner 已加入）
 
 ## Context
 
@@ -23,6 +23,8 @@
 ## Requirements
 
 ### R-008-01 自动化验收
+
+统一命令：`make acceptance`，运行 Python 测试、载荷 dry-run、Compose 配置检查和前端生产构建。
 
 必须运行 Python 算法/API 测试、前端生产构建、Compose 配置检查和服务载荷 dry-run，并记录日期、环境和结果。
 
@@ -59,7 +61,7 @@
 ## Acceptance
 
 - [ ] 教师确认单人项目安排。
-- [ ] 完成全量/演示子集规模记录和实际运行环境记录。
+- [x] 已记录演示子集 60,000 点、72 条轨迹、46 个停留点；全量规模与 Docker/HDFS/Spark 实际运行仍待目标机确认。
 - [ ] 生成 PPT 与 MP4 备份视频，并在报告中引用对应提交号。
 - [ ] 发布 `v1.0-course` 标签。
 

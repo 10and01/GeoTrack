@@ -58,6 +58,22 @@ docker compose up -d
 docker compose run --rm spark-submit
 ```
 
+## 一键验收
+
+Windows 可执行：
+
+`powershell
+.\\scripts\\acceptance.ps1
+`
+
+或使用 Make：
+
+`	ext
+make acceptance
+`
+
+该命令依次运行 Python 测试、服务载荷 dry-run、Compose 配置检查和前端生产构建。当前本机已验证演示子集（60,000 点、72 条轨迹、46 个停留点）；Docker Desktop/HDFS/Spark/MobilityDB 的真实启动需在 Docker 引擎可用的目标机器补做，并将日志写入报告。
+
 ## 课程交付物
 
 - `docs/requirements.md`：需求规约
@@ -67,4 +83,3 @@ docker compose run --rm spark-submit
 - `docker-compose.yml`：四层本地演示环境
 
 课程要求 2–4 人分组；如果以单人形式提交，请先取得教师书面确认。
-

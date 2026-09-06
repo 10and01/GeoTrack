@@ -13,3 +13,8 @@
 ## 交付检查
 
 不要伪造未运行的性能或集群结果；任何待验证项写入报告和 Spec；提交信息使用 `docs: complete course acceptance package`。
+
+
+## Follow-up: reproducible acceptance runner
+
+Add scripts/acceptance.ps1 and make acceptance; run tests, serving dry-runs, Compose config and frontend build. Record exact demo counts and explicitly distinguish Docker configuration validation from unavailable daemon execution.
