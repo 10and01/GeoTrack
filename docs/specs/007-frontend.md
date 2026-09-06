@@ -1,9 +1,9 @@
-# Spec 007 · React 地图与图表交互层
+﻿# Spec 007 · React 地图与图表交互层
 
 **Status**: Implemented
 **Owner**: GeoTrack 小组
 **Dependencies**: Spec 001、Spec 004、Spec 006
-**Target commit**: `WORKTREE` (query filter integration)
+**Target commit**: `e174e33` (query filters, trajectory details and job polling)
 
 ## Context
 
@@ -76,3 +76,4 @@
 ## Risks and traceability
 
 地图底图网络不可用时应准备截图或离线演示说明；图表包较大时保留 Vite 分包配置。对应 Spec 006 和 Spec 008。
+

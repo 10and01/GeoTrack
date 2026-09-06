@@ -1,9 +1,9 @@
-# Spec 006 · FastAPI 查询与后台任务
+﻿# Spec 006 · FastAPI 查询与后台任务
 
 **Status**: Implemented (local serving payload; database query performance pending)
 **Owner**: GeoTrack 小组
 **Dependencies**: Spec 005
-**Target commit**: `0b5cb39` (filter routes mounted); frontend integration `WORKTREE`
+**Target commit**: `e174e33` (summary-only lists, detail payload and frontend job polling)
 
 ## Context
 
@@ -72,3 +72,4 @@ API SHALL 提供 `/api/health`、`/api/summary`、`/api/users`、`/api/trajector
 ## Risks and traceability
 
 自定义热点重算对演示子集可接受，对全量数据必须转为后台 Spark 作业；报告要展示预计算查询和重计算任务的边界。对应 Spec 005、007。
+
