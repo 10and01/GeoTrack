@@ -1,9 +1,9 @@
-# Spec 009 · 全量数据可复现处理路径
+﻿# Spec 009 · 全量数据可复现处理路径
 
 **Status**: Implemented  
 **Owner**: GeoTrack 小组  
 **Dependencies**: Spec 002、003、004、005、008  
-**Target commit**: 待本阶段提交后填写
+**Target commit**: `2925e30`
 
 ## Context
 
@@ -80,3 +80,4 @@ Manifest 的 `counts` 至少包含：`user_count`、`plt_file_count`、`trajecto
 ## Risks and traceability
 
 逐文件扫描适合作为无 Spark 环境的规模证据，但距离计算仍是 CPU 密集型；生产全量挖掘应使用 Spark Parquet 中间层。全量实现对应课程的大数据规模、HDFS/Spark 分布式架构和过程证据要求；演示页面继续使用有界子集以满足交互性能目标。
+
