@@ -4,6 +4,7 @@ import csv
 import json
 import math
 import os
+import tempfile
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -341,4 +342,26 @@ def build_dataset(data_root: Path, max_trajectories: int | None = 120, max_point
 
 def write_dataset(dataset: dict[str, Any], output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(dataset, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Never truncate the live serving payload before serialization completes.
+    # An interrupted ingest should leave the previous valid snapshot intact so
+    # the API can keep serving it (or fall back to the seed on first boot).
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=output.parent,
+            prefix=f".{output.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            json.dump(dataset, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, output)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)

@@ -1,7 +1,10 @@
+import json
+import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-from jobs.geotrack_core import build_hotspots, extract_stay_points, haversine_m, trajectory_from_points
+from jobs.geotrack_core import build_hotspots, extract_stay_points, haversine_m, trajectory_from_points, write_dataset
 
 
 class CoreAlgorithmTests(unittest.TestCase):
@@ -32,7 +35,15 @@ class CoreAlgorithmTests(unittest.TestCase):
         self.assertEqual(row["geometry"]["type"], "LineString")
         self.assertGreater(row["distance_m"], 0)
 
+    def test_write_dataset_keeps_previous_snapshot_on_serialization_error(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "demo.json"
+            output.write_text(json.dumps({"version": "previous"}), encoding="utf-8")
+            with self.assertRaises(TypeError):
+                write_dataset({"not_json": object()}, output)
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {"version": "previous"})
+            self.assertEqual(list(output.parent.glob(f".{output.name}.*.tmp")), [])
+
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -10,6 +10,7 @@ except ImportError:  # pragma: no cover - gives a helpful import error when deps
 
 from .models import JobRequest
 from .store import store
+from .full_repository import repository as full_repository
 
 
 if FastAPI is None:  # pragma: no cover
@@ -32,7 +33,15 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:
-    return {"status": "ok", "data_source": "processed-demo" if store.data else "empty"}
+    # A batch job can replace demo.json outside this process (for example via
+    # the CLI or a mounted Docker volume).  Reload before reporting health so
+    # the frontend's normal refresh path observes the newest complete snapshot.
+    store.reload()
+    return {
+        "status": "ok",
+        "data_source": "processed-demo" if store.data else "empty",
+        "full_index_available": full_repository().is_ready,
+    }
 
 
 @app.get("/api/summary")

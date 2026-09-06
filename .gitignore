@@ -13,3 +13,9 @@ __pycache__/
 .DS_Store
 tmp/
 
+data/processed/*.sqlite
+data/processed/*.sqlite-*
+data/processed/full-curated/
+data/processed/full-points/
+data/processed/full-quality/
+data/processed/full-manifest.json

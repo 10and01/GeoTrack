@@ -58,6 +58,18 @@ docker compose up -d
 docker compose run --rm spark-submit
 ```
 
+### 全量数据接入
+
+全量路径不会把约 2,475 万个点放入 JSON 或一次性发送到浏览器，而是生成按用户/年份分区的 Parquet，再通过 PostGIS 的 staging + `COPY` 批量装载。完整步骤和失败回滚规则见 [`docs/runbooks/full-data-serving.md`](docs/runbooks/full-data-serving.md)。
+
+```powershell
+make full-summary
+make full-spark
+make full-load
+```
+
+将 API 切换到已发布的 PostGIS 批次：设置 `GEOTRACK_SERVING_BACKEND=postgres` 和 `DATABASE_URL`。未发布或失败批次不会替换 `current_run`，演示 SQLite 索引仍可独立使用。
+
 ## 一键验收
 
 Windows 可执行：

@@ -27,6 +27,7 @@
 | [006-api-jobs](006-api-jobs.md) | FastAPI 与后台任务 | 查询契约、job_id、错误状态 |
 | [007-frontend](007-frontend.md) | React 交互层 | 地图、图表、筛选、响应式状态 |
 | [008-acceptance](008-acceptance.md) | 课程验收与交付 | 测试、报告、提示词、演示 |
+| [009-full-data](009-full-data.md) | 全量数据可复现处理路径 | 有界内存 manifest、Spark Parquet ingest、全量/演示隔离 |
 
 ## 变更流程
 
@@ -34,5 +35,4 @@
 2. 实现、测试和人工演示完成后，将状态改为 `Implemented`，填写实际提交号。
 3. 若需求改变，保留旧 Spec，新增修订 Spec 或在变更记录中说明原因，避免重写历史。
 4. 每个阶段至少产生一个语义化 Git 提交，并在 Prompt 文件中记录实际使用的提示词。
-| [009-full-data](009-full-data.md) | 全量数据可复现处理路径 | 有界内存 manifest、Spark Parquet ingest、全量/演示隔离 |
 

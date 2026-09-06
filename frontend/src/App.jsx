@@ -18,7 +18,7 @@ import {
   Target,
   X,
 } from 'lucide-react'
-import { getJob, getTrajectory, loadDashboardData, queryHotspots, queryTrajectories, runJob } from './lib/api.js'
+import { getFullTrajectory, getJob, getTrajectory, loadDashboardData, queryFullHotspots, queryFullTrajectories, queryHotspots, queryTrajectories, runJob } from './lib/api.js'
 import MapPanel from './components/MapPanel.jsx'
 import SectionHeading from './components/SectionHeading.jsx'
 import StatCard from './components/StatCard.jsx'
@@ -49,6 +49,7 @@ function AppShell({ activeView, setActiveView, children, dataMode, onRefresh, mo
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileNav ? 'sidebar-open' : ''}`}>
+        <button className="sidebar-close" onClick={() => setMobileNav(false)} aria-label="关闭侧边导航"><X size={18} /></button>
         <div className="brand-lockup">
           <div className="brand-mark"><span /><span /><span /></div>
           <div><strong>GeoTrack</strong><small>MOBILITY INTELLIGENCE</small></div>
@@ -72,7 +73,7 @@ function AppShell({ activeView, setActiveView, children, dataMode, onRefresh, mo
           <button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="打开导航"><Menu size={20} /></button>
           <div className="breadcrumb"><span>GeoTrack</span><b>/</b><strong>{navItems.find((item) => item.id === activeView)?.label}</strong></div>
           <div className="topbar-actions">
-            <span className={`data-mode ${dataMode === 'api' ? 'live' : ''}`}><i />{dataMode === 'api' ? 'API LIVE' : 'DEMO SEED'}</span>
+            <span className={`data-mode ${dataMode === 'api' || dataMode === 'full' ? 'live' : ''}`}><i />{dataMode === 'full' ? 'FULL INDEX' : dataMode === 'api' ? 'API LIVE' : 'DEMO SEED'}</span>
             <button className="icon-button" onClick={onRefresh} title="刷新数据"><RefreshCw size={16} /></button>
             <div className="avatar">GT</div>
           </div>
@@ -103,16 +104,18 @@ function HotspotList({ hotspots, selected, onSelect }) {
 function Overview({ data, setActiveView }) {
   const [selectedHotspot, setSelectedHotspot] = useState(data.hotspots?.[0])
   const summary = data.summary ?? {}
+  const fullCounts = data.fullSummary?.summary ?? null
   return <div className="page-content">
-    <PageHeader kicker="MOBILITY INTELLIGENCE / 01" title="看见城市如何移动" description="从 2,487 万个轨迹点中提取停留、热点与时间模式，快速定位城市出行的高密度脉搏。" action={<button className="primary-button" onClick={() => setActiveView('hotspots')}><Sparkles size={16} />探索热点</button>} />
+    <PageHeader kicker="MOBILITY INTELLIGENCE / 01" title="看见城市如何移动" description={data.mode === 'full' ? '完整 GeoLife 数据已建立本地索引，页面按页读取轨迹摘要，并为详情返回有限采样点。' : '从演示子集中提取停留、热点与时间模式，快速定位城市出行的高密度脉搏。'} action={<button className="primary-button" onClick={() => setActiveView('hotspots')}><Sparkles size={16} />探索热点</button>} />
+    {data.mode === 'full' ? <div className="mode-note">FULL INDEX：全量 {fmt(fullCounts?.point_count)} 点 / {fmt(fullCounts?.trajectory_count)} 条轨迹；地图和详情采用分页、边界筛选与采样点。</div> : null}
     <div className="stat-grid">
-      <StatCard label="轨迹点" value={fmt(summary.point_count)} hint="GeoLife 1.3 官方规模" icon={<Activity size={15} />} />
-      <StatCard label="轨迹数量" value={fmt(summary.trajectory_count)} hint="全量轨迹记录" tone="orange" icon={<Route size={15} />} />
-      <StatCard label="覆盖用户" value={fmt(summary.user_count)} hint="182 个匿名用户" tone="blue" icon={<Layers3 size={15} />} />
-      <StatCard label="累计距离" value={fmt(summary.total_distance_km)} hint="公里 · 2007—2012" tone="violet" icon={<Map size={15} />} />
+      <StatCard label="轨迹点" value={fmt(summary.point_count)} hint={data.mode === 'full' ? '全量索引有效点' : '当前演示子集'} icon={<Activity size={15} />} />
+      <StatCard label="轨迹数量" value={fmt(summary.trajectory_count)} hint={data.mode === 'full' ? '全量分页查询' : '演示轨迹记录'} tone="orange" icon={<Route size={15} />} />
+      <StatCard label="覆盖用户" value={fmt(summary.user_count)} hint={data.mode === 'full' ? '全量匿名用户' : '演示子集用户'} tone="blue" icon={<Layers3 size={15} />} />
+      <StatCard label="累计距离" value={fmt(summary.total_distance_km)} hint="公里 · 数据集时间范围" tone="violet" icon={<Map size={15} />} />
     </div>
     <div className="dashboard-grid top-grid">
-      <section className="panel map-panel"><SectionHeading eyebrow="SPATIAL VIEW" title="北京 · 轨迹密度" meta="演示子集 / 500m DBSCAN" /><MapPanel trajectories={data.trajectories} hotspots={data.hotspots} selectedHotspot={selectedHotspot} onHotspotSelect={setSelectedHotspot} /><div className="map-footer"><span><i className="pulse-dot" />数据链路正常</span><button onClick={() => setActiveView('trajectories')}>查看轨迹明细 <span>→</span></button></div></section>
+      <section className="panel map-panel"><SectionHeading eyebrow="SPATIAL VIEW" title="北京 · 轨迹密度" meta={data.mode === 'full' ? '全量索引 · 采样显示' : '演示子集 / 500m DBSCAN'} /><MapPanel trajectories={data.trajectories} hotspots={data.hotspots} selectedHotspot={selectedHotspot} onHotspotSelect={setSelectedHotspot} /><div className="map-footer"><span><i className="pulse-dot" />数据链路正常</span><button onClick={() => setActiveView('trajectories')}>查看轨迹明细 <span>→</span></button></div></section>
       <section className="panel hotspot-panel"><SectionHeading eyebrow="TOP AREAS" title="热点区域" meta="按访问次数排序" /><HotspotList hotspots={data.hotspots} selected={selectedHotspot} onSelect={setSelectedHotspot} /><div className="panel-link"><button onClick={() => setActiveView('hotspots')}>进入热点分析 <span>→</span></button></div></section>
     </div>
     <div className="dashboard-grid bottom-grid">
@@ -140,7 +143,7 @@ function TrajectoryView({ data }) {
     const end = endDate ? `${endDate}T23:59:59Z` : undefined
     setQueryState({ loading: true, error: '' })
 
-    if (data.mode !== 'api') {
+    if (data.mode === 'demo') {
       const filtered = (data.trajectories ?? []).filter((row) => (
         (user === 'all' || row.user_id === user)
         && (!start || row.end_ts >= start)
@@ -151,7 +154,8 @@ function TrajectoryView({ data }) {
       return () => { cancelled = true }
     }
 
-    queryTrajectories({
+    const query = data.mode === 'full' ? queryFullTrajectories : queryTrajectories
+    query({
       user_id: user,
       start,
       end,
@@ -180,14 +184,15 @@ function TrajectoryView({ data }) {
       setDetail(null)
       return undefined
     }
-    if (data.mode !== 'api') {
+    if (data.mode === 'demo') {
       setDetail(selected)
       setDetailState({ loading: false, error: '' })
       return undefined
     }
     let cancelled = false
     setDetailState({ loading: true, error: '' })
-    getTrajectory(selected.trajectory_id).then((result) => {
+    const getDetail = data.mode === 'full' ? getFullTrajectory : getTrajectory
+    getDetail(selected.trajectory_id).then((result) => {
       if (!cancelled) {
         setDetail(result)
         setDetailState({ loading: false, error: '' })
@@ -209,7 +214,7 @@ function TrajectoryView({ data }) {
   return <div className="page-content">
     <PageHeader kicker="TRAJECTORY EXPLORER / 02" title="沿着用户轨迹走一遍" description="选择用户与日期范围，后端按页返回轨迹摘要，避免浏览器一次加载全量轨迹点。" action={<div className="filter-stack"><div className="select-wrap"><ListFilter size={15} /><select value={user} onChange={resetPage(setUser)}><option value="all">全部用户</option>{data.users?.map((item) => <option key={item.user_id} value={item.user_id}>{item.user_id} · {item.trajectory_count} 条</option>)}</select></div><label className="date-filter"><span>开始</span><input type="date" value={startDate} max={endDate || undefined} onChange={resetPage(setStartDate)} /></label><label className="date-filter"><span>结束</span><input type="date" value={endDate} min={startDate || undefined} onChange={resetPage(setEndDate)} /></label></div>} />
     <div className="dashboard-grid explorer-grid">
-      <section className="panel map-panel"><SectionHeading eyebrow="TRACE PREVIEW" title={selected?.trajectory_id ?? '选择一条轨迹'} meta={detailState.loading ? '详情查询中…' : detail ? `${detail.point_count} points` : '等待选择'} />{detailState.error ? <div className="inline-state error detail-error">{detailState.error}</div> : null}<MapPanel trajectories={detail ? [detail] : selected ? [selected] : []} hotspots={data.hotspots} /><div className="trajectory-summary"><div><span>开始时间</span><strong>{detail?.start_ts?.slice(0, 16).replace('T', ' ') ?? '—'}</strong></div><div><span>距离</span><strong>{detail ? km(detail.distance_m) : '—'}</strong></div><div><span>持续时间</span><strong>{detail ? `${Math.round((detail.duration_s ?? 0) / 60)} min` : '—'}</strong></div></div></section>
+      <section className="panel map-panel"><SectionHeading eyebrow="TRACE PREVIEW" title={selected?.trajectory_id ?? '选择一条轨迹'} meta={detailState.loading ? '详情查询中…' : detail ? `${detail.point_count} points` : '等待选择'} />{detailState.error ? <div className="inline-state error detail-error">{detailState.error}</div> : null}<MapPanel trajectories={detail ? [detail] : selected ? [selected] : []} hotspots={data.hotspots} />{detail?.sampled ? <div className="mode-note">全量轨迹详情已采样显示 {detail.points?.length ?? 0} 个点（原始 {detail.point_count} 个），用于保持地图交互流畅。</div> : null}<div className="trajectory-summary"><div><span>开始时间</span><strong>{detail?.start_ts?.slice(0, 16).replace('T', ' ') ?? '—'}</strong></div><div><span>距离</span><strong>{detail ? km(detail.distance_m) : '—'}</strong></div><div><span>持续时间</span><strong>{detail ? `${Math.round((detail.duration_s ?? 0) / 60)} min` : '—'}</strong></div></div></section>
       <section className="panel table-panel"><SectionHeading eyebrow="TRAJECTORIES" title="轨迹记录" meta={queryState.loading ? '查询中…' : `${rows.length} records`} />{queryState.error ? <div className="inline-state error">{queryState.error}</div> : queryState.loading ? <div className="inline-state">正在按筛选条件查询轨迹…</div> : rows.length === 0 ? <div className="inline-state">当前筛选条件下没有轨迹</div> : <div className="data-table"><div className="table-head"><span>ID</span><span>用户</span><span>距离</span><span>时间</span></div>{rows.map((row) => <button key={row.trajectory_id} className={`table-row ${selected?.trajectory_id === row.trajectory_id ? 'selected' : ''}`} onClick={() => setSelected(row)}><span>{row.trajectory_id.split('_')[1] ?? row.trajectory_id}</span><span className="user-chip">{row.user_id}</span><span>{km(row.distance_m)}</span><span>{row.start_ts.slice(0, 10)}</span></button>)}</div>}<div className="pagination"><button disabled={page === 0 || queryState.loading} onClick={() => setPage((current) => Math.max(0, current - 1))}>上一页</button><span>第 {page + 1} 页</span><button disabled={rows.length < pageSize || queryState.loading} onClick={() => setPage((current) => current + 1)}>下一页</button></div></section>
     </div>
   </div>
@@ -228,19 +233,23 @@ function HotspotView({ data }) {
     let cancelled = false
     setQueryState({ loading: true, error: '' })
     const timer = window.setTimeout(() => {
-      if (data.mode !== 'api') {
+      if (data.mode === 'demo') {
         setRows((data.hotspots ?? []).filter((item) => item.unique_users >= minUsers))
         setQueryState({ loading: false, error: '' })
         return
       }
-      queryHotspots({
-        min_users: minUsers,
-        eps,
-        minPts,
-        start: startDate ? `${startDate}T00:00:00Z` : undefined,
-        end: endDate ? `${endDate}T23:59:59Z` : undefined,
-        limit: 30,
-      }).then((result) => {
+      const query = data.mode === 'full' ? queryFullHotspots : queryHotspots
+      const params = data.mode === 'full'
+        ? { min_users: minUsers, limit: 30 }
+        : {
+            min_users: minUsers,
+            eps,
+            minPts,
+            start: startDate ? `${startDate}T00:00:00Z` : undefined,
+            end: endDate ? `${endDate}T23:59:59Z` : undefined,
+            limit: 30,
+          }
+      query(params).then((result) => {
         if (!cancelled) {
           setRows(result)
           setQueryState({ loading: false, error: '' })
@@ -263,8 +272,8 @@ function HotspotView({ data }) {
   }, [rows])
 
   return <div className="page-content">
-    <PageHeader kicker="HOTSPOT MINING / 03" title="城市的高密度脉搏" description="调整筛选与 DBSCAN 参数；API 模式按需重算演示子集，默认参数直接读取预计算结果。" action={<div className="filter-stack hotspot-filters"><div className="control-row"><span className="control-label">最少用户</span><input type="range" min="0" max="100" step="10" value={minUsers} onChange={(event) => setMinUsers(Number(event.target.value))} /><strong>{minUsers}</strong></div><div className="control-row"><span className="control-label">eps</span><input type="range" min="100" max="1500" step="100" value={eps} onChange={(event) => setEps(Number(event.target.value))} /><strong>{eps}m</strong></div><div className="control-row"><span className="control-label">minPts</span><input type="range" min="1" max="50" value={minPts} onChange={(event) => setMinPts(Number(event.target.value))} /><strong>{minPts}</strong></div><label className="date-filter"><span>开始</span><input type="date" value={startDate} max={endDate || undefined} onChange={(event) => setStartDate(event.target.value)} /></label><label className="date-filter"><span>结束</span><input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} /></label></div>} />
-    {data.mode !== 'api' && (eps !== 500 || minPts !== 3 || startDate || endDate) ? <div className="mode-note">DEMO SEED 只含默认 500m / 3 的预计算热点；连接 API 后自定义参数与日期筛选才会触发重算。</div> : null}
+    <PageHeader kicker="HOTSPOT MINING / 03" title="城市的高密度脉搏" description={data.mode === 'full' ? '全量索引使用批处理预计算的热点结果；当前页面支持按最少用户筛选。' : '调整筛选与 DBSCAN 参数；API 模式按需重算演示子集，默认参数直接读取预计算结果。'} action={<div className="filter-stack hotspot-filters"><div className="control-row"><span className="control-label">最少用户</span><input type="range" min="0" max="100" step="10" value={minUsers} onChange={(event) => setMinUsers(Number(event.target.value))} /><strong>{minUsers}</strong></div><div className="control-row"><span className="control-label">eps</span><input type="range" min="100" max="1500" step="100" value={eps} onChange={(event) => setEps(Number(event.target.value))} disabled={data.mode === 'full'} /><strong>{eps}m</strong></div><div className="control-row"><span className="control-label">minPts</span><input type="range" min="1" max="50" value={minPts} onChange={(event) => setMinPts(Number(event.target.value))} disabled={data.mode === 'full'} /><strong>{minPts}</strong></div><label className="date-filter"><span>开始</span><input type="date" value={startDate} max={endDate || undefined} onChange={(event) => setStartDate(event.target.value)} disabled={data.mode === 'full'} /></label><label className="date-filter"><span>结束</span><input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} disabled={data.mode === 'full'} /></label></div>} />
+    {data.mode === 'full' ? <div className="mode-note">FULL INDEX：eps / minPts / 日期范围属于索引生成参数；如需变更，请重新运行 full-index。</div> : data.mode === 'demo' && (eps !== 500 || minPts !== 3 || startDate || endDate) ? <div className="mode-note">DEMO SEED 只含默认 500m / 3 的预计算热点；连接 API 后自定义参数与日期筛选才会触发重算。</div> : null}
     <div className="dashboard-grid hotspot-view-grid">
       <section className="panel map-panel"><SectionHeading eyebrow="DBSCAN RESULT" title="空间聚类结果" meta={`eps ${eps}m · minPts ${minPts}`} />{queryState.error ? <div className="inline-state error">{queryState.error}</div> : queryState.loading ? <div className="inline-state map-state">正在查询热点结果…</div> : rows.length === 0 ? <div className="inline-state map-state">当前参数下没有识别到热点</div> : <MapPanel trajectories={data.trajectories} hotspots={rows} selectedHotspot={selected} onHotspotSelect={setSelected} />}<div className="selected-detail">{selected ? <><div><span>选中热点</span><strong>{selected.hotspot_id}</strong></div><div><span>访问次数</span><strong>{fmt(selected.visit_count)}</strong></div><div><span>峰值时段</span><strong>{String(selected.peak_hour).padStart(2, '0')}:00</strong></div><div><span>平均停留</span><strong>{Math.round(selected.avg_dwell_s / 60)} min</strong></div></> : <span>调整参数或日期范围后查看热点详情</span>}</div></section>
       <section className="panel hotspot-panel"><SectionHeading eyebrow="RANKING" title="热点排名" meta={queryState.loading ? '查询中…' : `${rows.length} clusters`} />{!queryState.loading && !queryState.error && rows.length > 0 ? <HotspotList hotspots={rows} selected={selected} onSelect={setSelected} /> : <div className="inline-state">{queryState.error || (queryState.loading ? '等待后端返回结果…' : '暂无热点排名')}</div>}<div className="method-note"><Sparkles size={16} /><div><strong>方法说明</strong><p>停留半径 200m、最短持续 20min；对停留中心点执行 Haversine 距离 DBSCAN。</p></div></div></section>
@@ -331,6 +340,14 @@ export default function App() {
   const { loading, data, error, refresh } = useDashboardData()
   const [activeView, setActiveView] = useState('overview')
   const [mobileNav, setMobileNav] = useState(false)
+  useEffect(() => {
+    if (!mobileNav) return undefined
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setMobileNav(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [mobileNav])
   if (loading && !data) return <div className="loading-screen"><div className="loading-mark"><span /><span /><span /></div><strong>正在加载轨迹工作台</strong><small>连接 API / 读取演示数据</small></div>
   if (error && !data) return <div className="error-screen"><Database size={28} /><h1>数据服务暂时不可用</h1><p>{error}</p><button className="primary-button" onClick={refresh}>重试</button></div>
   const view = activeView === 'overview' ? <Overview data={data} setActiveView={setActiveView} /> : activeView === 'trajectories' ? <TrajectoryView data={data} /> : activeView === 'hotspots' ? <HotspotView data={data} /> : activeView === 'patterns' ? <PatternView data={data} /> : <QualityView data={data} onRefresh={refresh} />

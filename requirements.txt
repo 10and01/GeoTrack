@@ -5,4 +5,4 @@ numpy>=1.26,<3
 pandas>=2.2,<3
 scikit-learn>=1.5,<2
 psycopg[binary]>=3.2,<4
-
+pyarrow>=17,<22

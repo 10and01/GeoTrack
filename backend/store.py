@@ -15,16 +15,26 @@ SEED_FILE = ROOT / "data" / "demo_seed.json"
 
 
 def _read_json() -> dict[str, Any]:
-    source = DATA_FILE if DATA_FILE.exists() else SEED_FILE
-    try:
-        return json.loads(source.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {"summary": {}, "trajectories": [], "hotspots": [], "patterns": [], "users": []}
+    # A previous/interrupted ingest can leave an empty or truncated demo file.
+    # Treat that as unavailable and keep the API usable with the checked-in
+    # seed instead of exposing an empty summary or crashing at import time.
+    for source in (DATA_FILE, SEED_FILE):
+        if not source.exists():
+            continue
+        try:
+            payload = json.loads(source.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+        summary = payload.get("summary") if isinstance(payload, dict) else None
+        if isinstance(summary, dict) and "trajectory_count" in summary:
+            return payload
+    return {"summary": {}, "trajectories": [], "hotspots": [], "patterns": [], "users": []}
 
 
 class GeoTrackStore:
     def __init__(self) -> None:
         self._lock = threading.RLock()
+        self._pipeline_lock = threading.Lock()
         self._jobs: dict[str, dict[str, Any]] = {}
         self.reload()
 
@@ -98,13 +108,17 @@ class GeoTrackStore:
             data_root = Path(os.getenv("GEOTRACK_DATA_ROOT", str(ROOT / "Geolife Trajectories 1.3" / "Data")))
             if not data_root.exists():
                 raise FileNotFoundError(f"数据目录不存在: {data_root}")
-            dataset = build_dataset(
-                data_root,
-                max_trajectories if max_trajectories is not None else int(os.getenv("GEOTRACK_DEMO_MAX_TRAJECTORIES", "120")),
-                max_points if max_points is not None else int(os.getenv("GEOTRACK_DEMO_MAX_POINTS", "60000")),
-            )
-            write_dataset(dataset, DATA_FILE)
-            self.reload()
+            # Serialize writers so two rapid UI submissions cannot race while
+            # rebuilding the same serving snapshot.  write_dataset itself is
+            # atomic, so readers still see the previous complete payload.
+            with self._pipeline_lock:
+                dataset = build_dataset(
+                    data_root,
+                    max_trajectories if max_trajectories is not None else int(os.getenv("GEOTRACK_DEMO_MAX_TRAJECTORIES", "120")),
+                    max_points if max_points is not None else int(os.getenv("GEOTRACK_DEMO_MAX_POINTS", "60000")),
+                )
+                write_dataset(dataset, DATA_FILE)
+                self.reload()
             self._update_job(
                 job_id,
                 status="completed",
