@@ -3,7 +3,7 @@
 **Status**: Accepted
 **Owner**: GeoTrack 小组
 **Dependencies**: Spec 001–007
-**Target commit**: `待最终发布`（本阶段 acceptance runner 已加入）
+**Target commit**: `ed71b88`（本阶段 acceptance runner 已加入）
 
 ## Context
 

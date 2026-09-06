@@ -3,7 +3,7 @@
 **Status**: Implemented
 **Owner**: GeoTrack 小组
 **Dependencies**: Spec 002、Spec 004
-**Target commit**: `本阶段提交待写入`
+**Target commit**: `ed71b88`
 
 ## Context
 
