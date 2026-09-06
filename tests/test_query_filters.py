@@ -18,6 +18,13 @@ class QueryFilterTests(unittest.TestCase):
         self.assertEqual([row["trajectory_id"] for row in rows], ["a"])
         self.assertEqual(filter_trajectories(self.data, offset=2), [])
 
+    def test_custom_hotspot_params_normalize_iso_timestamps(self):
+        self.data["trajectories"][0]["points"] = [
+            {"timestamp": "2024-01-01T08:00:00Z", "latitude": 39.9000, "longitude": 116.3000},
+            {"timestamp": "2024-01-01T08:30:00Z", "latitude": 39.9001, "longitude": 116.3001},
+        ]
+        rows = filter_hotspots(self.data, eps_m=500, min_pts=1)
+        self.assertIsInstance(rows, list)
     def test_hotspot_bbox_and_min_users(self):
         rows = filter_hotspots(self.data, bbox=(116.0, 39.0, 116.5, 40.0), min_users=4)
         self.assertEqual([row["hotspot_id"] for row in rows], ["HS-01"])

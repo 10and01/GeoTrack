@@ -15,3 +15,8 @@
 ## 提交
 
 提交信息使用 `feat: add filtered query and async job contract`，附上测试命令和响应样例。
+
+
+## Follow-up: frontend query integration
+
+Connect the React filters to /api/query/trajectories and /api/query/hotspots; preserve demo seed fallback, debounce hotspot parameter changes, expose loading/error/empty states, and paginate trajectory results. Record the actual commit in Spec 006 and Spec 007 after verification.

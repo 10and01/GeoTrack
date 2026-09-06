@@ -6,6 +6,25 @@ async function getJson(url) {
   return response.json()
 }
 
+function withQuery(path, params = {}) {
+  const search = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '' && value !== 'all') {
+      search.set(key, String(value))
+    }
+  })
+  const query = search.toString()
+  return query ? `${path}?${query}` : path
+}
+
+export function queryTrajectories(params = {}) {
+  return getJson(withQuery('/api/query/trajectories', params))
+}
+
+export function queryHotspots(params = {}) {
+  return getJson(withQuery('/api/query/hotspots', params))
+}
+
 export async function loadDashboardData() {
   try {
     const [summary, users, trajectories, hotspots, patterns, quality] = await Promise.all([
@@ -32,4 +51,3 @@ export async function runJob(job_type = 'mine') {
   if (!response.ok) throw new Error('任务提交失败')
   return response.json()
 }
-

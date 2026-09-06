@@ -1,9 +1,9 @@
 # Spec 006 · FastAPI 查询与后台任务
 
-**Status**: Accepted / implementation in progress  
-**Owner**: GeoTrack 小组  
-**Dependencies**: Spec 005  
-**Target commit**: `dcda816`
+**Status**: Implemented (local serving payload; database query performance pending)
+**Owner**: GeoTrack 小组
+**Dependencies**: Spec 005
+**Target commit**: `0b5cb39` (filter routes mounted); frontend integration `WORKTREE`
 
 ## Context
 
@@ -65,7 +65,7 @@ API SHALL 提供 `/api/health`、`/api/summary`、`/api/users`、`/api/trajector
 ## Acceptance
 
 - [x] 健康、总览、热点、模式、质量和任务结构测试通过。
-- [ ] 过滤路由挂载后补充边界框、分页和自定义 DBSCAN API 测试。
+- [x] 过滤路由挂载后补充边界框、分页和自定义 DBSCAN API 测试。
 - [ ] 数据库模式下补充 SQL 查询性能记录。
 
 ## Risks and traceability

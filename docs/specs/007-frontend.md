@@ -1,9 +1,9 @@
 # Spec 007 · React 地图与图表交互层
 
-**Status**: Implemented  
-**Owner**: GeoTrack 小组  
-**Dependencies**: Spec 001、Spec 004、Spec 006  
-**Target commit**: `221f947`
+**Status**: Implemented
+**Owner**: GeoTrack 小组
+**Dependencies**: Spec 001、Spec 004、Spec 006
+**Target commit**: `WORKTREE` (query filter integration)
 
 ## Context
 
@@ -69,7 +69,7 @@
 ## Acceptance
 
 - [x] `npm run build` 成功。
-- [x] 已验证桌面端、390×844 窄屏、热点筛选、图表和任务提交。
+- [x] 已验证桌面端、390×844 窄屏、热点筛选、图表和任务提交。`/api/query/trajectories` 与 `/api/query/hotspots` 已接入轨迹/热点页面。
 - [ ] 课程现场网络断开时使用备份视频完成演示。
 
 ## Risks and traceability

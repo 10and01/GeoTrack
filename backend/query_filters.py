@@ -69,10 +69,19 @@ def filter_hotspots(
 
         stays: list[dict[str, Any]] = []
         for trajectory in filter_trajectories(data, user_id=user_id, start=start, end=end, limit=200):
-            points = [
-                {**point, "user_id": trajectory.get("user_id"), "trajectory_id": trajectory.get("trajectory_id")}
-                for point in trajectory.get("points", [])
-            ]
+            from datetime import datetime
+
+            points = []
+            for point in trajectory.get("points", []):
+                normalized = {
+                    **point,
+                    "user_id": trajectory.get("user_id"),
+                    "trajectory_id": trajectory.get("trajectory_id"),
+                }
+                timestamp = normalized.get("timestamp")
+                if isinstance(timestamp, str):
+                    normalized["timestamp"] = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                points.append(normalized)
             stays.extend(extract_stay_points(points))
         rows = build_hotspots(stays, eps_m=eps_m, min_pts=min_pts)
     else:
