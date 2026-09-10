@@ -53,6 +53,10 @@ class PostgresFullRepository:
                 return {"available": False}
             counts = row["counts"] or {}
             quality = row["quality"] or {}
+            total_distance_km = 0.0
+            dist_row = connection.execute("SELECT COALESCE(SUM(distance_m), 0) AS total_m FROM users WHERE run_id=%s", (run_id,)).fetchone()
+            if dist_row and dist_row["total_m"]:
+                total_distance_km = round(float(dist_row["total_m"]) / 1000.0, 1)
             summary = {
                 "dataset": row["dataset"], "source": row["source"], "run_id": run_id,
                 "user_count": counts.get("users", counts.get("user_count", 0)),
@@ -60,8 +64,15 @@ class PostgresFullRepository:
                 "point_count": counts.get("trajectory_points", 0),
                 "stay_point_count": counts.get("stay_points", 0),
                 "hotspot_count": counts.get("hotspots", 0),
+                "total_distance_km": total_distance_km,
             }
-            return {"available": True, "summary": summary, "quality": quality, "run_id": run_id, "published_at": row["finished_at"].isoformat() if row["finished_at"] else None}
+            normalized_quality = {
+                "valid_points": quality.get("spark_valid_points", counts.get("trajectory_points", 0)),
+                "duplicate_points": quality.get("duplicate_points", 0),
+                "time_gap_segments": quality.get("time_gap_segments", 0),
+                "stay_point_count": counts.get("stay_points", 0),
+            }
+            return {"available": True, "summary": summary, "quality": normalized_quality, "run_id": run_id, "published_at": row["finished_at"].isoformat() if row["finished_at"] else None}
 
     def users(self, query: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         with self._db() as connection:
@@ -121,7 +132,7 @@ class PostgresFullRepository:
               SELECT *, GREATEST(1, CEIL(total::numeric / %s)::bigint) AS stride
               FROM ranked
             ) SELECT seq,timestamp,latitude,longitude,altitude_m,total FROM sampled
-              WHERE rn=1 OR rn=total OR ((rn-1) % stride)=0
+              WHERE rn=1 OR rn=total OR ((rn-1) %% stride)=0
               ORDER BY seq LIMIT %s""", (trajectory_id, run_id, limit, limit)).fetchall()
             item["points"] = [{**dict(point), "timestamp": point["timestamp"].isoformat().replace("+00:00", "Z") if point["timestamp"] else None} for point in points]
             item["sampled"] = len(points) < item["point_count"]
@@ -136,8 +147,14 @@ class PostgresFullRepository:
             result = []
             for row in rows:
                 item = dict(row)
-                item["center"] = json.loads(item.pop("center_json"))
+                center_geojson = json.loads(item.pop("center_json"))
+                if center_geojson and center_geojson.get("coordinates") and len(center_geojson["coordinates"]) >= 2:
+                    lon, lat = center_geojson["coordinates"][0], center_geojson["coordinates"][1]
+                    item["center"] = {"latitude": lat, "longitude": lon}
+                else:
+                    item["center"] = {"latitude": None, "longitude": None}
                 item["geometry"] = json.loads(item.pop("geometry_json"))
+                item["peak_hour"] = (int(item.get("peak_hour") or 0) + 8) % 24
                 result.append(item)
             return result
 
@@ -146,7 +163,14 @@ class PostgresFullRepository:
             run_id = self._run_id(connection)
             if not run_id: return []
             rows = connection.execute("SELECT pattern_id,cluster_id,label,user_count,avg_trip_count,avg_distance_m,avg_duration_s,hourly_profile,weekday_ratio,run_id FROM temporal_patterns WHERE run_id=%s ORDER BY cluster_id", (run_id,)).fetchall()
-            return [dict(row) for row in rows]
+            result = []
+            for row in rows:
+                item = dict(row)
+                profile = item.get("hourly_profile") or []
+                if len(profile) == 24:
+                    item["hourly_profile"] = profile[16:] + profile[:16]
+                result.append(item)
+            return result
 
     def quality(self) -> dict[str, Any]:
         return self.full_summary.get("quality", {})

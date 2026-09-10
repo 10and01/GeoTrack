@@ -1,25 +1,29 @@
 services:
   namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    environment:
-      - CLUSTER_NAME=geotrack
+    image: apache/hadoop:3.4.1
+    user: root
+    hostname: namenode
     ports:
       - "9870:9870"
       - "9000:9000"
     volumes:
       - hdfs_namenode:/hadoop/dfs/name
-
+      - ./docker/hadoop:/opt/hadoop/etc/hadoop:ro
+    entrypoint: ["/bin/bash", "-lc"]
+    command: ["if [ ! -d /hadoop/dfs/name/current ]; then hdfs namenode -format -force; fi; hdfs namenode"]
   datanode:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    environment:
-      - SERVICE_DEPENDENCIES=namenode:9870
+    image: apache/hadoop:3.4.1
+    user: root
+    hostname: datanode
     depends_on:
       - namenode
     volumes:
       - hdfs_datanode:/hadoop/dfs/data
-
+      - ./docker/hadoop:/opt/hadoop/etc/hadoop:ro
+    entrypoint: ["/bin/bash", "-lc"]
+    command: ["hdfs datanode"]
   spark-master:
-    image: bitnami/spark:3.5
+    image: bitnamilegacy/spark:3.5.4
     environment:
       - SPARK_MODE=master
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -31,9 +35,8 @@ services:
       - "7077:7077"
     volumes:
       - "./Geolife Trajectories 1.3:/dataset:ro"
-
   spark-worker:
-    image: bitnami/spark:3.5
+    image: bitnamilegacy/spark:3.5.4
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
@@ -43,7 +46,6 @@ services:
       - spark-master
     volumes:
       - "./Geolife Trajectories 1.3:/dataset:ro"
-
   postgres:
     image: ${POSTGRES_IMAGE:-mobilitydb/mobilitydb:latest}
     environment:
@@ -53,9 +55,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./sql:/docker-entrypoint-initdb.d:ro
-
   api:
     build:
       context: .
@@ -73,28 +74,42 @@ services:
       - "8000:8000"
     depends_on:
       - postgres
-
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    environment:
+      API_PROXY_TARGET: http://api:8000
     ports:
       - "5173:5173"
     depends_on:
       - api
-
   spark-submit:
-    image: bitnami/spark:3.5
+    build:
+      context: ./docker
+      dockerfile: spark-pandas.Dockerfile
+    user: root
     profiles: ["batch"]
     working_dir: /workspace
     volumes:
       - ./:/workspace
-      - "./Geolife Trajectories 1.3:/dataset:ro"
-    entrypoint: ["/bin/bash", "-lc"]
-    command: ["spark-submit jobs/spark_full_pipeline.py --input 'file:///dataset/Data/*/Trajectory/*.plt' --output-root /workspace/data/processed/full-curated --manifest /workspace/data/processed/full-manifest.json"]
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["spark-submit --driver-memory 4g --executor-memory 4g jobs/spark_full_pipeline.py --input 'hdfs://namenode:9000/geotrack/raw/Data/*/Trajectory/*.plt' --output-root /workspace/data/processed/full-curated --manifest /workspace/data/processed/full-manifest.json"]
     depends_on:
+      - namenode
       - spark-master
-
+  hdfs-client:
+    image: apache/hadoop:3.4.1
+    user: root
+    volumes:
+      - "D:/bigdata/Geolife Trajectories 1.3:/data:ro"
+      - ./:/workspace
+      - ./docker/hadoop:/opt/hadoop/etc/hadoop:ro
+    profiles: ["batch"]
+    entrypoint: ["/bin/bash", "-lc"]
+    command: ["echo ready"]
+    depends_on:
+      - namenode
   full-loader:
     build:
       context: .
@@ -109,7 +124,6 @@ services:
     command: ["python", "jobs/load_full_serving.py", "--input-root", "/app/data/processed/full-curated", "--manifest-uri", "/app/data/processed/full-manifest.json", "--dsn", "postgresql://geotrack:geotrack@postgres:5432/geotrack"]
     depends_on:
       - postgres
-
 volumes:
   hdfs_namenode:
   hdfs_datanode:
