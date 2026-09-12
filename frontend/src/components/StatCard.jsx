@@ -1,4 +1,4 @@
-export default function StatCard({ label, value, hint, tone = 'mint', icon }) {
+export default function StatCard({ label, value, tone = 'mint', icon }) {
   return (
     <div className={`stat-card ${tone}`}>
       <div className="stat-card-top">
@@ -6,7 +6,6 @@ export default function StatCard({ label, value, hint, tone = 'mint', icon }) {
         <span className="stat-icon">{icon}</span>
       </div>
       <strong>{value}</strong>
-      <span className="stat-hint">{hint}</span>
     </div>
   )
 }

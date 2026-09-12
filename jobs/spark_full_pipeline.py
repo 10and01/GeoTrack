@@ -166,9 +166,9 @@ def main() -> None:
         T.StructField("latitude", T.DoubleType(), False), T.StructField("longitude", T.DoubleType(), False),
         T.StructField("altitude_m", T.DoubleType(), True),
     ])).select("run_id", "user_id", "trajectory_id", "seq", "ts", "latitude", "longitude", "altitude_m")
-    points = points.withColumn("year", F.year("ts")).repartition("user_id", "year").sortWithinPartitions("trajectory_id", "ts", "seq")
+    points = points.repartition(args.partitions).sortWithinPartitions("trajectory_id", "ts", "seq")
     root = args.output_root.rstrip("/")
-    points.write.mode("overwrite").partitionBy("user_id", "year").parquet(f"{root}/points")
+    points.write.mode("overwrite").parquet(f"{root}/points")
 
     trajectory_schema = T.StructType([
         T.StructField("run_id", T.StringType(), False), T.StructField("user_id", T.StringType(), False),

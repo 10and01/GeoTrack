@@ -11,14 +11,15 @@ export default function MapPanel({ trajectories = [], hotspots = [], selectedHot
     <div className="map-wrap">
       <MapContainer center={BEIJING} zoom={10} scrollWheelZoom className="map-canvas">
         <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; 高德地图"
+          url="https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
+          subdomains={['1', '2', '3', '4']}
         />
         {trajectories.slice(0, 40).map((trajectory) => (
           <Polyline
             key={trajectory.trajectory_id}
             positions={lineCoordinates(trajectory.geometry)}
-            pathOptions={{ color: '#35d2b2', weight: 2, opacity: 0.54 }}
+            pathOptions={{ color: '#000000', weight: 2, opacity: 0.85 }}
           />
         ))}
         {hotspots.map((hotspot) => {
@@ -31,9 +32,9 @@ export default function MapPanel({ trajectories = [], hotspots = [], selectedHot
               radius={active ? radius + 5 : radius}
               eventHandlers={{ click: () => onHotspotSelect?.(hotspot) }}
               pathOptions={{
-                color: active ? '#ffb36a' : '#45e0c2',
-                fillColor: active ? '#ffb36a' : '#45e0c2',
-                fillOpacity: active ? 0.8 : 0.56,
+                color: active ? '#ffb36a' : '#1e3a8a',
+                fillColor: active ? '#ffb36a' : '#1e3a8a',
+                fillOpacity: active ? 0.8 : 0.7,
                 weight: active ? 3 : 1,
               }}
             >

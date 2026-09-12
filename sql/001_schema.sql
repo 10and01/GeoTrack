@@ -84,7 +84,6 @@ ALTER TABLE trajectories ALTER COLUMN run_id SET DEFAULT 'legacy';
 ALTER TABLE trajectories ALTER COLUMN run_id SET NOT NULL;
 ALTER TABLE trajectory_points DROP CONSTRAINT IF EXISTS trajectory_points_pkey;
 ALTER TABLE trajectory_points ADD CONSTRAINT trajectory_points_pkey PRIMARY KEY (run_id, trajectory_id, seq);
-ALTER TABLE stay_points DROP CONSTRAINT IF EXISTS stay_points_trajectory_id_start_ts_end_ts_key;
 CREATE INDEX IF NOT EXISTS idx_points_run_user_ts ON trajectory_points (run_id, user_id, ts);
 CREATE INDEX IF NOT EXISTS idx_trajectories_run_user_time
   ON trajectories (run_id, user_id, start_ts, end_ts);
@@ -111,6 +110,7 @@ CREATE INDEX IF NOT EXISTS idx_stays_run_time ON stay_points (run_id, start_ts, 
 CREATE INDEX IF NOT EXISTS idx_stays_geom ON stay_points USING GIST (center_geom);
 CREATE INDEX IF NOT EXISTS idx_stays_time ON stay_points (start_ts, end_ts);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_stays_trajectory_window ON stay_points (trajectory_id, start_ts, end_ts);
+ALTER TABLE stay_points DROP CONSTRAINT IF EXISTS stay_points_trajectory_id_start_ts_end_ts_key;
 
 CREATE TABLE IF NOT EXISTS hotspots (
   hotspot_id TEXT PRIMARY KEY,
